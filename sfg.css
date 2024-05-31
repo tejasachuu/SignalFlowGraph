@@ -1,0 +1,30 @@
+/**
+ * Copyright (c) 2012 @ahmedkotb , kotbcorp [at] gmail.com
+ *
+ * See the file license.txt for copying permission.
+ */
+.mytable {
+    border-collapse:collapse;
+    cursor:pointer;
+}
+.mytable th{
+    background-color:#A7C942;
+    border:1px solid black;
+    color:#fff;
+    text-align:center;
+}
+.mytable td{
+    text-align:center;
+    border:1px solid black;
+    width:150px
+}
+.mytable tr.even{
+    background-color:#eee;
+    border:1px solid black;
+    width:150px
+}
+.mytable tr.odd{
+    background-color:#fff;
+    border:1px solid black;
+    width:150px
+}
