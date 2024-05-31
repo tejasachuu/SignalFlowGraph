@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <link rel="stylesheet" href="sfg.css" type="text/css"/>
+        <script type="text/javascript" src="sfg.js"></script>
+        <script type="text/javascript">
+            var sfg = null;
+            var paths = null;
+            var loops = null;
+            var srcLabel = "";
+            var destLabel = "";
+
+            function init(){
+                var canvas = document.getElementById("canvas");
+                sfg = new sfgjs.SFG(canvas);
+                refreshSymbolsTable();
+            }
+
+            function addNode(){
+                clearSolution();
+                sfg.startAddingNode();
+            }
+
+            function addLineEdge(){
+                clearSolution();
+                sfg.startAddingLineEdge();
+                refreshSymbolsTable();
+            }
+
+            function addArcEdge(){
+                clearSolution();
+                sfg.startAddingArcEdge();
+                refreshSymbolsTable();
+            }
+
+            function deleteItem(){
+                if (sfg.isSomethingSelected()){
+                    sfg.deleteSelected();
+                    refreshSymbolsTable();
+                    clearSolution();
+                }
+            }
+
+            function showForwardPaths(){
+                var title = document.getElementById("pathslisttitle");
+                title.innerHTML = "Forward Paths";
+                showPaths(paths,"Path");
+            }
+
+            function showLoops(){
+                var title = document.getElementById("pathslisttitle");
+                title.innerHTML = "Loops";
+                showPaths(loops,"Loop");
+            }
+
+            function showPaths(paths,prefix){
+                var table = document.getElementById("pathslist");
+                //clear table
+                while (table.rows.length > 0)
+                    table.deleteRow(table.rows.length-1);
+
+                var clickFunction = function(row,path){
+                    row.onclick = function(){
+                        sfg.markPath(path);
+                    }
+
+                    row.title = "Gain : " + path.gain() +
+                        "\n" + "Gain value : " + path.gainValue(sfg.symbols);
+                }
+                if (paths == null)
+                    return;
+
+                for (var i=0;i<paths.length;i++){
+                    var row = table.insertRow(table.rows.length);
+                    if (i%2 == 0)
+                        row.className = "even";
+                    else
+                        row.className = "odd";
+                    clickFunction(row,paths[i]);
+
+                    var cell = row.insertCell(0);
+                    var textNode = document.createTextNode(prefix + " " + (i+1));
+                    cell.appendChild(textNode);
+                }
+            }
+
+            function clearSolution(){
+                srcLabel = "";
+                destLabel = "";
+                paths = null;
+                loops = null;
+                showPaths(null);
+                document.getElementById("results").innerHTML = "";
+            }
+
+            function solve(){
+                sfg.startSolve(function(result){
+                    var padStr = function (str,length,chr){
+                        var pad = (length-str.length)/2;
+                        var c = 0;
+                        while (c < pad){
+                            str = chr + str;
+                            c++;
+                        }
+                        c = 0;
+                        while (c < pad){
+                            str += chr;
+                            c++;
+                        }
+                        return str;
+                    }
+                    document.getElementById("results");
+                    results.innerHTML = "";
+                    var symHTML = "<h3> Symbolic </h3>";
+                    var deltaLen = result.sym.delta.length;
+                    var numLen = result.sym.num.length;
+                    var line = "";
+                    if (numLen < deltaLen) {
+                        result.sym.num = padStr(result.sym.num,deltaLen," ");
+                        line = padStr(line,deltaLen,"_");
+                    }else{
+                        result.sym.delta = padStr(result.sym.delta,numLen," ");
+                        line = padStr(line,numLen,"-");
+                    }
+
+                    symHTML += "<pre>" + result.sym.num + "</pre>";
+                    symHTML += line;
+                    symHTML += "<pre>" +result.sym.delta+ "</pre>";
+                    symHTML += "<br/>";
+                    symHTML += "<h3> Numeric </h3>";
+                    symHTML += result.numeric.num + " / " + result.numeric.delta
+                            + " = " + result.numeric.num/result.numeric.delta;
+                    results.innerHTML = symHTML;
+                    paths = result.paths;
+                    loops = result.loops;
+                    srcLabel = result.srcLabel;
+                    destLabel = result.destLabel;
+                    showLoops();
+                });
+            }
+
+            function refreshSymbolsTable(){
+                var symbols = sfg.getSymbols();
+
+                //sort symbols alphabetically
+                symbols.sort(function(a,b){
+                    if (a.sym < b.sym) return -1;
+                    else if (a.sym > b.sym) return 1;
+                    return 0;
+                });
+
+                var table = document.getElementById("symtable");
+                //clear table
+                while (table.rows.length > 1)
+                    table.deleteRow(table.rows.length-1);
+
+                var clickFunction = function(row,symbol,value){
+                    row.onclick = function(){
+                        var newValue = prompt("New value for " + symbol + " ?", value);
+                        if (newValue){
+                            var v = parseFloat(newValue);
+                            if (!isNaN(v)){
+                                sfg.setSymbolValue(symbol,v);
+                                refreshSymbolsTable();
+                                clearSolution();
+                            }
+                            else
+                                alert("Not a valid number");
+                        }
+                    }
+
+                }
+
+                for (var i=0;i<symbols.length;i++){
+                    var symbol = symbols[i].sym;
+                    var value = symbols[i].value;
+
+                    var row = table.insertRow(table.rows.length);
+                    if (i%2 == 0)
+                        row.className = "even";
+                    else
+                        row.className = "odd";
+                    clickFunction(row,symbol,value);
+
+                    var cellLeft = row.insertCell(0);
+                    var textNode = document.createTextNode(symbol);
+                    cellLeft.appendChild(textNode);
+
+                    var cellRight = row.insertCell(1);
+                    var textNode = document.createTextNode(value);
+                    cellRight.appendChild(textNode);
+                }
+            }
+
+            function clearAll(){
+                if (confirm("Are you sure ?")){
+                    sfg.clear();
+                    refreshSymbolsTable();
+                    clearSolution();
+                }
+            }
+
+            function editLabel(){
+                if (sfg.isSomethingSelected()){
+                    var label = prompt("New Label",sfg.getSelectedLabel());
+                    if (label){
+                        if (isNaN(label)){
+                            sfg.setSelectedLabel(label);
+                            refreshSymbolsTable();
+                            clearSolution();
+                        }else{
+                            alert("Not a valid label");
+                        }
+                    }
+                }
+            }
+        </script>
+  </head>
+  <body onload = "init()">
+      <div align="center">
+          <h2 style="margin-bottom:10px">Signal Flow Graph Solver</h2>
+          v 1.2 <br/>
+          Tejas 
+          <a href="https://www.linkedin.com/in/tejas-r-a4b177283?utm_source=share&utm_campaign=share_via&utm_content=profile&utm_medium=android_app">@Tejas</a>
+      </div>
+      <hr/>
+      <div>
+          <button id= "addNode" onclick="addNode()" > add node </button>
+          <button id= "addLineEdge" onclick="addLineEdge()" > add line edge </button>
+          <button id= "addArcEdge" onclick="addArcEdge()" > add arc edge </button>
+
+          <button id= "deleteItem" onclick="deleteItem()" > delete selected </button>
+          <button id= "clear" onclick="clearAll()" > clear</button>
+          <button id= "zoomIn" onclick="sfg.zoomIn()" > + </button>
+          <button id= "zoomOut" onclick="sfg.zoomOut()" > - </button>
+          <button id= "editLabel" onclick="editLabel()" > Edit Label</button>
+          <button id= "solve" onclick="solve()" > Solve </button>
+          <br/>
+          <div width="600px" style = "float:left;margin-right:20px">
+              <canvas id="canvas" width="800px" height="400px" style="border:solid;">
+                sfg canvas
+              </canvas>
+          </div>
+          <div style="height:150px;width:170px;overflow-y:auto;display:inline-block" title="click on a symbol to change its value">
+              <table id="symtable" class="mytable">
+                  <tr>
+                      <th> Symbol </th>
+                      <th> Value </th>
+                  </tr>
+              </table>
+          </div>
+          <br/>
+          <button onclick="showForwardPaths()" > Forward Paths</button>
+          <button onclick="showLoops()" > Loops </button>
+          <h3 id="pathslisttitle" title="click on a path or a loop to mark it"> loops </h3>
+          <div style="height:150px;width:170px;overflow-y:auto">
+              <table id="pathslist" class="mytable">
+              </table>
+          </div>
+      </div>
+      <div style="clear:left">
+        <br/>
+        <div id="results" style="height:80px;width:800px;border:1px solid black;overflow:auto;padding:10px;resize:both">
+        </div>
+      </div>
+
+      <div id="debug">
+      </div>
+  </body>
+</html>
